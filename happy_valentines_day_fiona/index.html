@@ -1,0 +1,832 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>For Fiona</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- FONTS: Fredoka (Cartoony), VT323 (Pixel), Caveat (Handwriting) -->
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600&family=VT323&family=Caveat:wght@600&display=swap" rel="stylesheet">
+    
+    <!-- TAILWIND CONFIG -->
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ['Fredoka', 'sans-serif'], 
+              mono: ['VT323', 'monospace'],
+              hand: ['Caveat', 'cursive'], 
+            },
+            colors: {
+              'pastel-pink': '#ffc2d1',     /* Light Pink */
+              'pastel-rose': '#ff8fab',     /* Darker Pink */
+              'pastel-cream': '#ffe5ec',    /* Cream/White-Pink */
+              'pastel-bg': '#fff0f5',       /* Background */
+              'retro-border': '#590d22',    /* Dark Burgundy Border */
+              'paper-white': '#fffdf5',     /* Letter Paper Color */
+            },
+            boxShadow: {
+              'retro': '4px 4px 0px 0px #590d22',
+              'retro-sm': '2px 2px 0px 0px #590d22',
+              'retro-lg': '8px 8px 0px 0px #590d22',
+            },
+            animation: {
+              'float': 'float 4s ease-in-out infinite', /* Slowed down slightly */
+            },
+            keyframes: {
+              float: {
+                '0%, 100%': { transform: 'translateY(0) rotate(var(--rot))' },
+                '50%': { transform: 'translateY(-6px) rotate(var(--rot))' }, /* Reduced movement range */
+              }
+            }
+          }
+        }
+      }
+    </script>
+
+    <!-- CUSTOM CSS -->
+    <style>
+      body {
+        background-color: #fff0f5;
+        
+        /* SIMPLE SCRAPBOOK PAPER DOT PATTERN */
+        background-image: radial-gradient(#ffc2d1 2px, transparent 2px);
+        background-size: 30px 30px;
+        background-position: 0 0;
+      }
+      
+      /* STICKER EFFECT CSS */
+      .sticker {
+        position: absolute;
+        user-select: none;
+        cursor: default;
+        z-index: 0;
+        /* Animation duration will be randomized in JS */
+        animation-name: float;
+        animation-timing-function: ease-in-out;
+        animation-iteration-count: infinite;
+        
+        /* The drop shadow makes it look like it's pasted on top */
+        filter: drop-shadow(2px 2px 2px rgba(89, 13, 34, 0.1));
+        opacity: 1; /* Changed from 0.5 to 1 for full visibility */
+        transition: opacity 0.3s ease;
+      }
+      
+      .sticker:hover {
+        transform: scale(1.1); /* Slight zoom on hover */
+      }
+      
+      /* SVG Styles for Stickers */
+      .sticker svg {
+        overflow: visible;
+      }
+      
+      /* Utility to hide screens */
+      .hidden-screen {
+        display: none !important;
+      }
+      
+      /* Polaroid Styling */
+      .polaroid-container {
+        position: relative;
+        width: 260px; /* Wider for bigger photos */
+        height: 290px; /* Kept compact to minimize white space inside frame */
+        margin: 0 auto;
+        perspective: 1000px;
+      }
+      .polaroid {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: white;
+        padding: 12px 12px 0 12px; 
+        border: 2px solid #590d22;
+        box-shadow: 2px 2px 0px rgba(89, 13, 34, 0.2);
+        transition: transform 0.6s cubic-bezier(0.25, 0.8, 0.25, 1);
+        cursor: pointer;
+        display: flex;
+        flex-direction: column; /* Stack image and text */
+        align-items: center;
+        will-change: transform; 
+      }
+      .polaroid img {
+        width: 100%;
+        height: 220px; 
+        object-fit: cover;
+        border: 1px solid #eee;
+        pointer-events: none;
+      }
+      .polaroid-caption {
+        height: 50px; 
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-family: 'Caveat', cursive;
+        font-size: 1.6rem;
+        color: #590d22;
+        text-align: center;
+        width: 100%;
+        pointer-events: none;
+        line-height: 1;
+      }
+
+      /* Cute Scrollbar Styles (Reusable) */
+      .cute-scrollbar::-webkit-scrollbar {
+        width: 8px;
+      }
+      .cute-scrollbar::-webkit-scrollbar-track {
+        background: transparent; 
+      }
+      .cute-scrollbar::-webkit-scrollbar-thumb {
+        background: #ffc2d1; 
+        border-radius: 4px;
+        border: 2px solid transparent;
+        background-clip: content-box;
+      }
+      .cute-scrollbar::-webkit-scrollbar-thumb:hover {
+        background-color: #ff8fab; 
+      }
+
+      /* Clean Paper Effect */
+      .clean-paper {
+        background-color: #fffdf5;
+        padding-top: 10px;
+        max-height: 50vh;
+        overflow-y: auto;
+        padding-right: 10px; 
+      }
+    </style>
+
+    <!-- LUCIDE ICONS -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+  <link rel="stylesheet" href="/index.css">
+</head>
+  <body class="min-h-screen flex flex-col items-center justify-center p-4 relative overflow-hidden font-sans text-retro-border">
+    
+    <!-- ========================================= -->
+    <!-- GLOBAL SVG FILTERS (For Torn Paper Look)  -->
+    <!-- ========================================= -->
+    <svg style="visibility: hidden; position: absolute;" width="0" height="0">
+      <defs>
+        <filter id="torn-edge">
+          <!-- Turbulence creates noise -->
+          <feTurbulence type="fractalNoise" baseFrequency="0.05" numOctaves="3" result="noise" />
+          <!-- Displacement map uses noise to distort the edge -->
+          <feDisplacementMap in="SourceGraphic" in2="noise" scale="5" />
+        </filter>
+      </defs>
+    </svg>
+
+    <!-- ========================================= -->
+    <!-- CUSTOM SVG STICKERS BACKGROUND            -->
+    <!-- ========================================= -->
+    
+    <!-- 1. BUNNY (Top Left Zone) -->
+    <div class="sticker w-28 h-28" data-zone="tl">
+        <svg viewBox="0 0 100 100" class="w-full h-full">
+            <!-- Torn Paper Backing -->
+            <g filter="url(#torn-edge)" stroke="white" stroke-width="12" stroke-linejoin="round" fill="white">
+                <ellipse cx="50" cy="65" rx="35" ry="30" />
+                <ellipse cx="30" cy="25" rx="10" ry="25" transform="rotate(-15 30 25)" />
+                <ellipse cx="70" cy="25" rx="10" ry="25" transform="rotate(15 70 25)" />
+            </g>
+            <!-- Illustration -->
+            <g>
+                <ellipse cx="30" cy="25" rx="10" ry="25" fill="#fff" transform="rotate(-15 30 25)" />
+                <ellipse cx="70" cy="25" rx="10" ry="25" fill="#fff" transform="rotate(15 70 25)" />
+                <ellipse cx="30" cy="25" rx="6" ry="18" fill="#ffc2d1" transform="rotate(-15 30 25)" />
+                <ellipse cx="70" cy="25" rx="6" ry="18" fill="#ffc2d1" transform="rotate(15 70 25)" />
+                <ellipse cx="50" cy="65" rx="35" ry="30" fill="#fff" />
+                <circle cx="40" cy="60" r="3" fill="#590d22" />
+                <circle cx="60" cy="60" r="3" fill="#590d22" />
+                <path d="M46 68 q4 4 8 0" stroke="#590d22" stroke-width="2" fill="none" />
+                <circle cx="42" cy="72" r="4" fill="#ffc2d1" opacity="0.6" />
+                <circle cx="58" cy="72" r="4" fill="#ffc2d1" opacity="0.6" />
+            </g>
+        </svg>
+    </div>
+
+    <!-- 2. HEART (Top Right Zone) -->
+    <div class="sticker w-24 h-24" data-zone="tr">
+        <svg viewBox="0 0 100 100" class="w-full h-full">
+            <g filter="url(#torn-edge)" stroke="white" stroke-width="12" stroke-linejoin="round" fill="white">
+                 <path d="M50 85 C20 85 0 55 0 35 C0 15 20 5 35 5 C45 5 50 15 50 15 C50 15 55 5 65 5 C80 5 100 15 100 35 C100 55 80 85 50 85 Z" />
+            </g>
+            <path d="M50 85 C20 85 0 55 0 35 C0 15 20 5 35 5 C45 5 50 15 50 15 C50 15 55 5 65 5 C80 5 100 15 100 35 C100 55 80 85 50 85 Z" fill="#ff5a5a" />
+            <path d="M20 25 Q30 20 40 25" stroke="white" stroke-width="3" fill="none" opacity="0.6" stroke-linecap="round"/>
+        </svg>
+    </div>
+
+    <!-- 3. FLOWER (Bottom Left Zone) -->
+    <div class="sticker w-28 h-28" data-zone="bl">
+        <svg viewBox="0 0 100 100" class="w-full h-full">
+             <g filter="url(#torn-edge)" stroke="white" stroke-width="12" stroke-linejoin="round" fill="white">
+                 <circle cx="50" cy="50" r="15" />
+                 <circle cx="50" cy="20" r="15" />
+                 <circle cx="50" cy="80" r="15" />
+                 <circle cx="20" cy="50" r="15" />
+                 <circle cx="80" cy="50" r="15" />
+                 <circle cx="29" cy="29" r="15" />
+                 <circle cx="71" cy="29" r="15" />
+                 <circle cx="29" cy="71" r="15" />
+                 <circle cx="71" cy="71" r="15" />
+             </g>
+             <g fill="#ff8fab">
+                 <circle cx="50" cy="20" r="15" />
+                 <circle cx="50" cy="80" r="15" />
+                 <circle cx="20" cy="50" r="15" />
+                 <circle cx="80" cy="50" r="15" />
+                 <circle cx="29" cy="29" r="15" />
+                 <circle cx="71" cy="29" r="15" />
+                 <circle cx="29" cy="71" r="15" />
+                 <circle cx="71" cy="71" r="15" />
+             </g>
+             <circle cx="50" cy="50" r="15" fill="#fef08a" />
+        </svg>
+    </div>
+
+    <!-- 4. LOVE LETTER (Bottom Right Zone) -->
+    <div class="sticker w-32 h-32" data-zone="br">
+        <svg viewBox="0 0 100 100" class="w-full h-full">
+            <g filter="url(#torn-edge)" stroke="white" stroke-width="12" stroke-linejoin="round" fill="white">
+                <rect x="10" y="30" width="80" height="50" rx="5" />
+            </g>
+            <rect x="10" y="30" width="80" height="50" rx="5" fill="#ffc2d1" stroke="#590d22" stroke-width="2" />
+            <path d="M10 30 L50 60 L90 30" fill="#ffe5ec" stroke="#590d22" stroke-width="2" />
+            <circle cx="50" cy="50" r="8" fill="#ff5a5a" />
+        </svg>
+    </div>
+
+    <!-- ========================================= -->
+    <!-- SCREEN 1: THE PROPOSAL QUESTION           -->
+    <!-- ========================================= -->
+    <div id="screen-question" class="z-10 w-full max-w-md flex flex-col items-center gap-8 transition-opacity duration-500 mb-20">
+      
+      <!-- Animated Character Container -->
+      <div class="bg-white p-2 rounded-xl border-4 border-retro-border shadow-retro rotate-1 relative w-48 h-48">
+        <div class="relative w-full h-full rounded-lg overflow-hidden bg-pastel-bg border-2 border-retro-border">
+            
+            <img 
+              src="fingerhearts.gif" 
+              onerror="this.src='https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExajF6aG1iY2Z1cTFwazk5eGZqNm1uOG94bnZ1Y3FvbTJ5bmZ5Z3l5MiZlcD12MV9zdGlja2Vyc19zZWFyY2gmY3Q9cw/cLS1cfxvGOPVpf9g3y/giphy.gif'"
+              alt="My Character"
+              class="w-full h-full object-cover" 
+            />
+
+        </div>
+      </div>
+
+      <!-- Question Text -->
+      <div class="bg-pastel-pink border-4 border-retro-border p-6 rounded-2xl shadow-retro w-full text-center relative">
+        <div class="absolute -top-3 -right-3 bg-white border-2 border-retro-border p-1 rounded-full animate-bounce">
+          <i data-lucide="heart" fill="#ff5a5a" stroke="#590d22" width="24" height="24"></i>
+        </div>
+        <h1 class="text-3xl md:text-4xl font-bold text-retro-border leading-tight">
+          Fiona, will you be my Valentine?
+        </h1>
+      </div>
+
+      <!-- Yes / No Buttons -->
+      <div class="flex flex-wrap items-center justify-center gap-4 w-full">
+        <button
+          id="btn-yes"
+          class="bg-green-300 border-4 border-retro-border text-retro-border font-bold rounded-xl shadow-retro hover:bg-green-400 transition-all active:translate-y-1 active:shadow-none flex items-center justify-center gap-2"
+          style="font-size: 16px; padding: 12px 24px;"
+        >
+           YES
+           <i data-lucide="heart" fill="currentColor" class="text-retro-border" width="20" height="20"></i>
+        </button>
+
+        <button
+          id="btn-no"
+          class="bg-red-300 border-4 border-retro-border text-retro-border font-bold text-xl px-6 py-3 rounded-xl shadow-retro hover:bg-red-400 transition-all active:translate-y-1 active:shadow-none"
+        >
+          No
+        </button>
+      </div>
+    </div>
+
+    <!-- ========================================= -->
+    <!-- SCREEN 2: SUCCESS / PHOTO GALLERY         -->
+    <!-- ========================================= -->
+    <div id="screen-success" class="hidden-screen z-10 w-full max-w-md mb-20">
+      <div class="bg-white border-4 border-retro-border rounded-xl shadow-retro-lg w-full relative overflow-hidden flex flex-col">
+        
+        <!-- Mac OS Style Window Bar -->
+        <div class="w-full h-10 border-b-4 border-retro-border bg-pastel-pink flex items-center justify-end px-3 space-x-2 shrink-0">
+           <div class="w-3 h-3 rounded-full border-2 border-retro-border bg-yellow-200"></div>
+           <div class="w-3 h-3 rounded-full border-2 border-retro-border bg-green-200"></div>
+           <!-- CLOSE BUTTON (Active) -->
+           <div id="btn-close-window" class="w-3 h-3 rounded-full border-2 border-retro-border bg-red-400 cursor-pointer hover:bg-red-600 active:scale-90 transition-transform" title="Reset"></div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="p-6 pb-8 flex flex-col items-center bg-pastel-cream">
+            
+            <!-- Dynamic Polaroid Stack (Injected by JS) -->
+            <!-- Increased margin bottom (mb-8) to Create space between photo and text -->
+            <div id="polaroid-deck" class="polaroid-container mb-8 mt-2"></div>
+
+            <!-- COMPRESSED TEXT SECTION -->
+            <div class="text-center w-full z-10 relative">
+                <h1 class="text-2xl font-bold text-retro-border mb-0 leading-none tracking-wide">YAY!!!</h1>
+                <p class="text-base text-retro-border font-medium leading-tight mt-2">
+                  I knew you would say yes! ❤️
+                </p>
+                <p class="text-xs text-retro-border opacity-60 font-mono mb-4 mt-1">(Tap photos to swipe!)</p>
+                
+                <!-- NEW BUTTON: READ LETTERS -->
+                <button 
+                  id="btn-read-letters"
+                  class="w-full bg-pastel-pink border-4 border-retro-border rounded-full px-4 py-2 shadow-retro text-retro-border font-bold text-lg flex items-center justify-center gap-2 hover:bg-pink-300 hover:shadow-none hover:translate-y-1 transition-all"
+                >
+                  Read Letters <i data-lucide="mail" width="20" height="20"></i>
+                </button>
+            </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========================================= -->
+    <!-- SCREEN 3: LETTER SELECTION MENU           -->
+    <!-- ========================================= -->
+    <div id="screen-selection" class="hidden-screen z-10 w-full max-w-md mb-20">
+      <div class="bg-white border-4 border-retro-border rounded-xl shadow-retro-lg w-full relative overflow-hidden flex flex-col">
+        
+        <!-- Mac OS Style Window Bar (ADDED FOR CONSISTENCY) -->
+        <div class="w-full h-10 border-b-4 border-retro-border bg-pastel-pink flex items-center justify-end px-3 space-x-2 shrink-0">
+           <div class="w-3 h-3 rounded-full border-2 border-retro-border bg-yellow-200"></div>
+           <div class="w-3 h-3 rounded-full border-2 border-retro-border bg-green-200"></div>
+           <!-- CLOSE BUTTON (Active - goes back/resets) -->
+           <div id="btn-close-selection" class="w-3 h-3 rounded-full border-2 border-retro-border bg-red-400 cursor-pointer hover:bg-red-600 active:scale-90 transition-transform"></div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="p-6 flex flex-col items-center gap-4 bg-white">
+            <h2 class="text-3xl font-bold text-retro-border flex items-center gap-2">
+              <i data-lucide="mail-open" width="32" height="32"></i> Your Letters
+            </h2>
+            
+            <p class="text-center text-lg">Pick a letter to read!</p>
+    
+            <!-- Grid of Letter Buttons (Injected by JS) -->
+            <!-- Added max-height and overflow-auto to enable scrolling -->
+            <div id="letters-grid" class="w-full grid grid-cols-1 gap-4 max-h-[300px] overflow-y-auto px-2 pb-2 cute-scrollbar">
+               <!-- Buttons appear here -->
+            </div>
+    
+            <button id="btn-back-to-success" class="mt-2 text-retro-border font-bold hover:underline">
+              &larr; Back to Photos
+            </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========================================= -->
+    <!-- SCREEN 4: READING THE LETTER              -->
+    <!-- ========================================= -->
+    <div id="screen-read-letter" class="hidden-screen z-10 w-full max-w-lg mb-20">
+      
+      <!-- The Letter Paper -->
+      <div class="bg-paper-white border-4 border-retro-border rounded-none shadow-retro-lg w-full relative p-8 rotate-1">
+        
+        <!-- Scotch Tape Effect -->
+        <div class="absolute -top-4 left-1/2 -translate-x-1/2 w-32 h-8 bg-yellow-200 opacity-50 rotate-2"></div>
+
+        <!-- Letter Content -->
+        <h2 id="letter-title" class="text-2xl font-bold text-retro-border mb-4 font-hand">Title Here</h2>
+        
+        <!-- Replaced 'lined-paper' with 'clean-paper' to remove lines and fix alignment issues -->
+        <div class="clean-paper cute-scrollbar min-h-[300px] text-2xl text-retro-border font-hand leading-relaxed tracking-wide">
+          <p id="letter-content" class="whitespace-pre-line">
+            Letter content goes here...
+          </p>
+        </div>
+
+        <div class="mt-8 flex justify-center">
+          <button 
+            id="btn-close-letter"
+            class="bg-red-300 border-4 border-retro-border rounded-xl px-6 py-2 font-bold shadow-retro hover:shadow-none hover:translate-y-1 transition-all"
+          >
+            Close Letter
+          </button>
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- FOOTER INFO -->
+    <div class="fixed bottom-6 left-0 w-full flex justify-center gap-6 pointer-events-none z-50">
+      <div class="bg-white border-4 border-retro-border rounded-full px-6 py-2 shadow-retro-sm text-retro-border font-mono text-lg font-bold tracking-widest flex items-center justify-center">
+        JULIAN.OS //V2.14
+      </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- JAVASCRIPT LOGIC (Embeded for Portability) -->
+    <!-- ========================================== -->
+    <script>
+      // Initialize Lucide icons
+      if (window.lucide) {
+        window.lucide.createIcons();
+      }
+
+      // ==========================================
+      // CONFIGURATION DATA (EDIT THIS)
+      // ==========================================
+
+      /** 1. Rejection Button Messages */
+      const PHRASES = [
+        "No",
+        "Are you sure?",
+        "Really sure?",
+        "Fiona please!",
+        "Don't do this!",
+        "I'm gonna cry...",
+        "You're breaking my heart!",
+        "I'll buy you snacks!",
+        "Last chance!",
+        "Pretty please?",
+        "Have a heart!",
+        "Don't be cold!",
+        "Change of heart?",
+        "PLEASE",
+        "Okay...",
+      ];
+
+      /** 
+       * 2. Gallery Images
+       * 
+       * INSTRUCTIONS TO ADD YOUR OWN PHOTOS:
+       * 1. Create a folder on your computer.
+       * 2. Put this file (index.html) inside it.
+       * 3. Put your photos in that same folder.
+       * 4. Rename your photos to pic1.jpg, pic2.jpg, etc.
+       * 5. Change the 'src' below to match your file names.
+       */
+      const PHOTOS = [
+        // 1 - 5 (Examples)
+        { src: "https://images.unsplash.com/photo-1518568814500-bf0f8d125f46?q=80&w=400&auto=format&fit=crop", caption: "1. You're beautiful 🌸" },
+        { src: "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExM2FwaWZwdjFuaGJ0aGdvOXl5czR6eGk4eGd6ZnN5bjQ5eXpjb294ZSZlcD12MV9zdGlja2Vyc19zZWFyY2gmY3Q9cw/iCVzZwwE6QhN54q51b/giphy.gif", caption: "2. Us being silly 🤪" },
+        { src: "https://images.unsplash.com/photo-1583511655857-d19b40a7a54e?q=80&w=400&auto=format&fit=crop", caption: "3. Cutie pie! 🐶" },
+        { src: "https://images.unsplash.com/photo-1559339352-11d035aa65de?q=80&w=400&auto=format&fit=crop", caption: "4. Best dates ever 🍕" },
+        { src: "https://media.giphy.com/media/26BRv0ThflsHCqDrG/giphy.gif", caption: "5. I love you! ❤️" },
+        
+        // 6 - 25 (Placeholders - Fill these in!)
+        { src: "https://placehold.co/400x500/ffc2d1/590d22?text=Photo+6", caption: "6. Your Caption Here" },
+        { src: "https://placehold.co/400x500/ffc2d1/590d22?text=Photo+7", caption: "7. Your Caption Here" },
+        { src: "https://placehold.co/400x500/ffc2d1/590d22?text=Photo+8", caption: "8. Your Caption Here" },
+        { src: "https://placehold.co/400x500/ffc2d1/590d22?text=Photo+9", caption: "9. Your Caption Here" },
+        { src: "https://placehold.co/400x500/ffc2d1/590d22?text=Photo+10", caption: "10. Your Caption Here" },
+        { src: "https://placehold.co/400x500/ffc2d1/590d22?text=Photo+11", caption: "11. Your Caption Here" },
+        { src: "https://placehold.co/400x500/ffc2d1/590d22?text=Photo+12", caption: "12. Your Caption Here" },
+        { src: "https://placehold.co/400x500/ffc2d1/590d22?text=Photo+13", caption: "13. Your Caption Here" },
+        { src: "https://placehold.co/400x500/ffc2d1/590d22?text=Photo+14", caption: "14. Your Caption Here" },
+        { src: "https://placehold.co/400x500/ffc2d1/590d22?text=Photo+15", caption: "15. Your Caption Here" },
+        { src: "https://placehold.co/400x500/ffc2d1/590d22?text=Photo+16", caption: "16. Your Caption Here" },
+        { src: "https://placehold.co/400x500/ffc2d1/590d22?text=Photo+17", caption: "17. Your Caption Here" },
+        { src: "https://placehold.co/400x500/ffc2d1/590d22?text=Photo+18", caption: "18. Your Caption Here" },
+        { src: "https://placehold.co/400x500/ffc2d1/590d22?text=Photo+19", caption: "19. Your Caption Here" },
+        { src: "https://placehold.co/400x500/ffc2d1/590d22?text=Photo+20", caption: "20. Your Caption Here" },
+        { src: "https://placehold.co/400x500/ffc2d1/590d22?text=Photo+21", caption: "21. Your Caption Here" },
+        { src: "https://placehold.co/400x500/ffc2d1/590d22?text=Photo+22", caption: "22. Your Caption Here" },
+        { src: "https://placehold.co/400x500/ffc2d1/590d22?text=Photo+23", caption: "23. Your Caption Here" },
+        { src: "https://placehold.co/400x500/ffc2d1/590d22?text=Photo+24", caption: "24. Your Caption Here" },
+        { src: "https://placehold.co/400x500/ffc2d1/590d22?text=Photo+25", caption: "25. Your Caption Here" },
+      ];
+
+      /** 3. Letters Content (Title & Body) */
+      // You can add as many letters as you want here! The list will scroll automatically.
+      const LETTERS = [
+        {
+          id: 'open-now',
+          label: 'Open Now 💌',
+          content: "My dearest Fiona,\n\nI am so happy you said yes! You make every day brighter and I can't wait to celebrate Valentine's Day with you.\n\nLove always,\nJulian"
+        },
+        {
+          id: 'sad',
+          label: 'Open When You Are Sad 😢',
+          content: "Remember that you are loved, you are strong, and you have a smile that lights up the room. Even on the darkest days, I am here for you."
+        },
+        {
+          id: 'happy',
+          label: 'Open When You Are Happy 😄',
+          content: "I love seeing you happy! Your joy is contagious. Let's keep making amazing memories together!"
+        },
+        {
+          id: 'future',
+          label: 'For Our Future 🚀',
+          content: "I can't wait to see what the future holds for us. Adventures, snacks, and lots of love!"
+        },
+        // NEW LETTER 1
+        {
+          id: 'anniversary',
+          label: 'Happy Anniversary! 🥂',
+          content: "Another year has passed, and I love you even more today than I did yesterday. Here's to many more years of happiness!"
+        },
+        // NEW LETTER 2
+        {
+          id: 'random',
+          label: 'Just Because 💖',
+          content: "I don't need a special occasion to tell you how much you mean to me. You are my everything."
+        }
+      ];
+
+      // ==========================================
+      // CORE APPLICATION LOGIC
+      // ==========================================
+
+      // --- Variables ---
+      let noCount = 0;
+      let isAnimating = false;
+
+      // --- DOM Elements ---
+      const screenQuestion = document.getElementById('screen-question');
+      const screenSuccess = document.getElementById('screen-success');
+      const screenSelection = document.getElementById('screen-selection');
+      const screenReadLetter = document.getElementById('screen-read-letter');
+
+      const btnYes = document.getElementById('btn-yes');
+      const btnNo = document.getElementById('btn-no');
+      const btnReadLetters = document.getElementById('btn-read-letters');
+      const btnBackToSuccess = document.getElementById('btn-back-to-success');
+      const btnCloseLetter = document.getElementById('btn-close-letter');
+      const btnCloseWindow = document.getElementById('btn-close-window'); 
+      const btnCloseSelection = document.getElementById('btn-close-selection');
+
+      const deckElement = document.getElementById('polaroid-deck');
+      const lettersGrid = document.getElementById('letters-grid');
+      const letterTitle = document.getElementById('letter-title');
+      const letterContent = document.getElementById('letter-content');
+
+      // --- Randomize Stickers Logic ---
+      function randomizeStickers() {
+        const stickers = document.querySelectorAll('.sticker');
+        stickers.forEach(sticker => {
+          // 1. Get Zone
+          const zone = sticker.dataset.zone;
+          
+          // 2. Random Rotation (-40 to 40 degrees)
+          const rot = Math.random() * 80 - 40; 
+          
+          // 3. Random Delay (0 to 3s) & Duration (6 to 12s)
+          const delay = Math.random() * 3;
+          const duration = 6 + Math.random() * 6;
+          
+          // 4. Random Offsets (ALWAYS POSITIVE to keep on screen)
+          // Range: 2% to 15% (relative to the corner anchor)
+          const offsetX = Math.random() * 13 + 2; 
+          const offsetY = Math.random() * 13 + 2;
+
+          // Apply Styles
+          sticker.style.setProperty('--rot', `${rot}deg`);
+          sticker.style.animationDelay = `${delay}s`;
+          sticker.style.animationDuration = `${duration}s`;
+
+          // Apply Position based on Zone
+          if (zone === 'tl') { // Top-Left
+            sticker.style.top = `${offsetY}%`;
+            sticker.style.left = `${offsetX}%`;
+          } else if (zone === 'tr') { // Top-Right
+            sticker.style.top = `${offsetY}%`;
+            sticker.style.right = `${offsetX}%`;
+          } else if (zone === 'bl') { // Bottom-Left
+            sticker.style.bottom = `${offsetY}%`;
+            sticker.style.left = `${offsetX}%`;
+          } else if (zone === 'br') { // Bottom-Right
+            sticker.style.bottom = `${offsetY}%`;
+            sticker.style.right = `${offsetX}%`;
+          }
+        });
+      }
+
+      // --- Helper: Initialize Photo Deck ---
+      function initDeck() {
+        if (!deckElement) return;
+        deckElement.innerHTML = ''; 
+        PHOTOS.forEach((photo, index) => {
+          const card = document.createElement('div');
+          card.className = 'polaroid';
+          
+          // Random slight rotation
+          const rotation = Math.random() * 10 - 5; 
+          
+          // Add slight random translation for messy stack effect
+          // This makes the 25 photos look more natural
+          const xOffset = Math.random() * 10 - 5;
+          const yOffset = Math.random() * 10 - 5;
+          
+          card.style.transform = `translate(${xOffset}px, ${yOffset}px) rotate(${rotation}deg)`;
+          
+          // Store original rotation for animation reset
+          card.dataset.rotation = rotation.toString();
+          
+          card.style.zIndex = index.toString();
+          
+          // Image
+          const img = document.createElement('img');
+          img.src = photo.src;
+          
+          // Caption
+          const caption = document.createElement('div');
+          caption.className = 'polaroid-caption';
+          caption.innerText = photo.caption;
+
+          card.appendChild(img);
+          card.appendChild(caption);
+          
+          deckElement.appendChild(card);
+        });
+      }
+
+      // --- Helper: Generate Letter Buttons ---
+      function renderLetterButtons() {
+        if (!lettersGrid) return;
+        lettersGrid.innerHTML = ''; 
+
+        LETTERS.forEach((letter) => {
+          const btn = document.createElement('button');
+          btn.className = "w-full bg-white border-4 border-retro-border rounded-xl p-4 shadow-retro text-left text-lg font-bold text-retro-border hover:bg-pastel-pink hover:shadow-none hover:translate-y-1 transition-all flex items-center justify-between group shrink-0";
+          
+          btn.innerHTML = `
+            <span>${letter.label}</span>
+            <i data-lucide="chevron-right" class="group-hover:translate-x-1 transition-transform"></i>
+          `;
+
+          btn.addEventListener('click', () => {
+            openLetter(letter);
+          });
+
+          lettersGrid.appendChild(btn);
+        });
+
+        // Refresh icons
+        if (window.lucide) {
+          window.lucide.createIcons();
+        }
+      }
+
+      // --- Helper: Open Specific Letter ---
+      function openLetter(letter) {
+        if (letterTitle) letterTitle.innerText = letter.label;
+        if (letterContent) letterContent.innerText = letter.content;
+
+        // Navigation: Hide Menu -> Show Letter
+        if (screenSelection && screenReadLetter) {
+          screenSelection.classList.add('hidden-screen');
+          screenReadLetter.classList.remove('hidden-screen');
+        }
+      }
+
+      // --- Helper: Reset Application State ---
+      function resetApp() {
+        // 1. Reset Variables
+        noCount = 0;
+        isAnimating = false;
+
+        // 2. Reset Button Styles
+        if (btnYes) {
+          btnYes.style.fontSize = '16px';
+          btnYes.style.padding = '12px 24px';
+        }
+        if (btnNo) {
+          btnNo.innerText = 'No';
+        }
+
+        // 3. Reset Screens (Hide all, show question)
+        if (screenSuccess) screenSuccess.classList.add('hidden-screen');
+        if (screenSelection) screenSelection.classList.add('hidden-screen');
+        if (screenReadLetter) screenReadLetter.classList.add('hidden-screen');
+        if (screenQuestion) screenQuestion.classList.remove('hidden-screen');
+        
+        // 4. Re-randomize stickers for fresh look
+        randomizeStickers();
+      }
+
+      // ==========================================
+      // EVENT LISTENERS
+      // ==========================================
+      
+      // Initialize stickers on load
+      window.addEventListener('load', randomizeStickers);
+
+      // 1. "No" Button Logic
+      if (btnNo && btnYes) {
+        btnNo.addEventListener('click', () => {
+          noCount++;
+          const textIndex = Math.min(noCount, PHRASES.length - 1);
+          btnNo.innerText = PHRASES[textIndex];
+          
+          // Growth Logic
+          const newSize = noCount * 20 + 16;
+          const paddingY = noCount * 5 + 12;
+          const paddingX = noCount * 8 + 24;
+          btnYes.style.fontSize = `${newSize}px`;
+          btnYes.style.padding = `${paddingY}px ${paddingX}px`;
+        });
+      }
+
+      // 2. "Yes" Button Logic
+      if (btnYes) {
+        btnYes.addEventListener('click', () => {
+          if (screenQuestion && screenSuccess) {
+            screenQuestion.classList.add('hidden-screen');
+            screenSuccess.classList.remove('hidden-screen');
+            initDeck(); 
+          }
+        });
+      }
+
+      // 3. "Read Letters" Button
+      if (btnReadLetters) {
+        btnReadLetters.addEventListener('click', () => {
+          if (screenSuccess && screenSelection) {
+            screenSuccess.classList.add('hidden-screen');
+            screenSelection.classList.remove('hidden-screen');
+            renderLetterButtons();
+          }
+        });
+      }
+
+      // 4. Back Button
+      if (btnBackToSuccess) {
+        btnBackToSuccess.addEventListener('click', () => {
+          if (screenSelection && screenSuccess) {
+            screenSelection.classList.add('hidden-screen');
+            screenSuccess.classList.remove('hidden-screen');
+          }
+        });
+      }
+
+      // 5. Close Letter Button
+      if (btnCloseLetter) {
+        btnCloseLetter.addEventListener('click', () => {
+          if (screenReadLetter && screenSelection) {
+            screenReadLetter.classList.add('hidden-screen');
+            screenSelection.classList.remove('hidden-screen');
+          }
+        });
+      }
+
+      // 6. RED CLOSE WINDOW BUTTON
+      if (btnCloseWindow) {
+        btnCloseWindow.addEventListener('click', () => {
+          resetApp();
+        });
+      }
+
+      // 7. RED CLOSE BUTTON ON SELECTION SCREEN
+      if (btnCloseSelection) {
+        btnCloseSelection.addEventListener('click', () => {
+          resetApp();
+        });
+      }
+
+      // 8. Photo Deck "Swipe" Logic
+      if (deckElement) {
+        deckElement.addEventListener('click', () => {
+          if (isAnimating) return; 
+          const topCard = deckElement.lastElementChild;
+          if (!topCard) return;
+
+          isAnimating = true;
+          
+          // Animation: Fly up and rotate
+          topCard.style.transition = "transform 0.6s ease-in";
+          topCard.style.transform = "translateY(-400px) rotate(15deg)";
+          topCard.style.opacity = "0.8"; 
+          
+          setTimeout(() => {
+            // Move to bottom of stack
+            deckElement.prepend(topCard);
+            
+            // Reset instantly
+            topCard.style.transition = "none";
+            topCard.style.opacity = "1";
+            const originalRotation = topCard.dataset.rotation || "0";
+            void topCard.offsetWidth; // Force reflow
+            
+            // Animate gently back to original rotation (plus random x/y offset is lost here but that's okay, it stacks neatly at bottom)
+            topCard.style.transition = "transform 0.6s ease-out";
+            topCard.style.transform = `rotate(${originalRotation}deg)`;
+            
+            // Update Z-Indexes
+            const cards = deckElement.children;
+            for (let i = 0; i < cards.length; i++) {
+              cards[i].style.zIndex = i.toString();
+            }
+            setTimeout(() => {
+              isAnimating = false;
+            }, 600); 
+          }, 500);
+        });
+      }
+    </script>
+  <script type="module" src="/index.tsx"></script>
+</body>
+</html>
